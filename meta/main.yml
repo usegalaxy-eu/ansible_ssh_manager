@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: ssh_manager
+  author: usegalaxy-eu
+  description: Centralized SSH key management for multiple users and machines
+  company: usegalaxy-eu
+  license: MIT
+  min_ansible_version: "2.11"
+  galaxy_tags:
+    - ssh
+    - security
+    - authentication
+    - system
+    - users
+
+dependencies: []
