@@ -2,6 +2,7 @@
 galaxy_info:
   author: Galaxy Europe
   company: Galaxy Europe
+  namespace: usegalaxy_eu
   description: Centralized SSH key management for multiple users and machines
   role_name: ssh_manager
   license: MIT
