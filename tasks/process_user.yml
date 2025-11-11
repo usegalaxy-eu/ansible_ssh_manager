@@ -1,10 +1,29 @@
 ---
+- name: "Get user's home directory for {{ unix_user }}"
+  ansible.builtin.set_fact:
+    user_home: "{{ getent_passwd_result.ansible_facts.getent_passwd[unix_user][4] }}"
+
+- name: "Get user's user id for {{ unix_user }}"
+  ansible.builtin.set_fact:
+    unix_user_uid: "{{ getent_passwd_result.ansible_facts.getent_passwd[unix_user][1] }}"
+
+- name: "Get user's group id for {{ unix_user }}"
+  ansible.builtin.set_fact:
+    unix_group_gid: "{{ getent_passwd_result.ansible_facts.getent_passwd[unix_user][2] }}"
+
+- name: "Stat {{ unix_user }}'s authorized keys file"
+  become: true
+  ansible.builtin.stat:
+    path: "{{ user_home }}/.ssh/authorized_keys"
+  register: authorized_keys_stat
+
+- name: "Fail if {{ unix_user }} does not own its authorized keys file"
+  ansible.builtin.fail:
+    msg: "User {{ unix_user }} does not own its authorized keys file"
+  when: authorized_keys_stat.stat.exists and (authorized_keys_stat.stat.uid != (unix_user_uid | int) or authorized_keys_stat.stat.gid != (unix_group_gid | int))
+
 - name: "Process SSH keys for {{ unix_user }}"
   block:
-    - name: "Get user's home directory for {{ unix_user }}"
-      ansible.builtin.set_fact:
-        user_home: "{{ getent_passwd_result.ansible_facts.getent_passwd[unix_user][4] }}"
-
     - name: "Initialize empty key list for {{ unix_user }}"
       ansible.builtin.set_fact:
         user_ssh_keys: []
@@ -22,7 +41,7 @@
         # this will match if the person is authorized for all machines or the current machine
         machine_matches: "{{ inventory_hostname in query('inventory_hostnames', person_data['machines'] if person_data['machines'] is string else person_data['machines'] | join(',')) }}"
         user_matches: "{{ unix_user in person_data['users'] }}"
-        person_keys: "{{ person_data['keys'] }}"
+        person_keys: "{{ person_data.key }}"
       when:
         - machine_matches | bool
         - user_matches | bool
@@ -32,8 +51,8 @@
       ansible.builtin.file:
         path: "{{ user_home }}/.ssh"
         state: directory
-        owner: "{{ unix_user }}"
-        group: "{{ unix_user }}"
+        owner: "{{ unix_user_uid }}"
+        group: "{{ unix_group_gid }}"
         mode: '0700'
 
     - name: "Replace authorized_keys for {{ unix_user }}"
@@ -41,7 +60,6 @@
       ansible.builtin.template:
         src: authorized_keys.j2
         dest: "{{ user_home }}/.ssh/authorized_keys"
-        owner: "{{ unix_user }}"
-        group: "{{ unix_user }}"
+        owner: "{{ unix_user_uid }}"
+        group: "{{ unix_group_gid }}"
         mode: '0600'
-  when: unix_user in getent_passwd_result.ansible_facts.getent_passwd.keys()

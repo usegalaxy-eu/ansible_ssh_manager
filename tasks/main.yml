@@ -8,17 +8,22 @@
   ansible.builtin.set_fact:
     authorized_unix_users: "{{ ssh_manager_authorized_persons | dict2items | map(attribute='value.users') | sum(start=[]) | unique }}"
 
-- name: Collect UNIX users that have an authorized keys file defined
+- name: Collect UNIX users that have an authorized keys file defined (and own it)
   ansible.builtin.shell:
     cmd: |
-      while IFS=: read -r username homedir; do
-        if [ -f "$homedir/.ssh/authorized_keys" ]; then
-          echo "$username"
+      while IFS=: read -r username homedir user_uid user_gid; do
+        authorized_keys="${homedir}/.ssh/authorized_keys"
+        if [ -f "$authorized_keys" ]; then
+          file_uid=$(stat -c '%u' "$authorized_keys")
+          file_gid=$(stat -c '%g' "$authorized_keys")
+          if [[ "$file_uid" -eq "$user_uid" && "$file_gid" -eq "$user_gid" ]]; then
+            echo "$username"
+          fi
         fi
       done
     stdin: |
       {% for user, fields in getent_passwd_result.ansible_facts.getent_passwd.items() %}
-      {{ user }}:{{ fields[4] }}
+      {{ user }}:{{ fields[4] }}:{{ fields[1] }}:{{ fields[2] }}
       {% endfor %}
   changed_when: false
   check_mode: false
@@ -30,3 +35,4 @@
   loop_control:
     loop_var: unix_user
     label: "{{ unix_user }}"
+  when: unix_user in getent_passwd_result.ansible_facts.getent_passwd.keys()
