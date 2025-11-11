@@ -1,4 +1,4 @@
-# UseGalaxy ansible_ssh_manager
+# UseGalaxy ansible-ssh-manager
 
 This Ansible role provides a centralized way to manage SSH authorized keys for multiple users across multiple machines. It allows you to define SSH keys for different people and specify which machines and user accounts they should have access to.
 
@@ -21,7 +21,7 @@ Install the collection via ansible-galaxy:
 ```yaml
 ssh_manager_authorized_persons:
   <person_name>:
-    keys:
+    key:
       - '<ssh_public_key_1>'
       - '<ssh_public_key_2>'
     machines:
